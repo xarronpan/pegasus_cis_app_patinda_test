@@ -12,16 +12,3 @@ class Application(main.Application):
             {"type": "piecework_slip", "name": "计件单"},
         ]
 
-    def get_smtp_send_email_config(self) -> dict|None:
-        return {
-            "email_addr": config.email_addr,
-            "smtp_host": config.smtp_host,
-            "smtp_password": config.email_pwd,
-            "write_to_sent_mailbox": False,
-            "sent_mailbox": "Sent Messages",
-            "imap_host": config.imap_host,
-            "imap_password": config.email_pwd,
-        }
-
-    def get_msgraph_send_email_config(self) -> dict|None:
-        return None
