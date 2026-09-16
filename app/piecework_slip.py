@@ -1,76 +1,71 @@
-import libs.app.packing_list.base as base
+import libs.app.root.llm
 import libs.app.types as types
-import pandas as pd
-import re
+import libs.util.util
 from .. import config
 
-_MAX_PRICE_ERROR = 0.003
-
-class Application(base.Application):
+class Application(libs.app.root.llm.Application):
     def __init__(self):
-        cfg = {}
-        cfg["check_status"] = config.check_status
-        cfg["check_received"] = False
-        cfg["sync_invoice_with_approval"] = config.sync_invoice_with_approval
-        base.Application.__init__(self, config.appid, config.locale, cfg)
+         libs.app.root.llm.Application.__init__(
+             self, config.appid, config.locale)
 
-    def get_product_ids(self, val):
-        product_ids = set()
-        if pd.isna(val):
-            return []
+    def get_hided_fields(self):
+        return ["price", "quantity",
+                "supplier", "currency", "uninvoiced_qty",
+                "invoice_number", "vendor", "invoice_date", "payment_term", "due_date"]
 
-        if isinstance(val, (int)):
-            val = str(val)
-        if isinstance(val, (float)):
-            val = str(int(val))
+    def get_extract_method(self):
+        return "llm"
 
-        val = str(val)
+    def ai_header_fields(self):
+        return []
 
-        val = val.replace("\n", "")
-        val = val.replace("\r", "")
+    def ai_line_fields(self):
+        return [{"name": "product_name",
+                 "llm_name": "商品名称"},
+                {"name": "specification",
+                 "llm_name": "规格"},
+                {"name": "color",
+                 "llm_name": "颜色"},
+                {"name": "quantity",
+                 "llm_name": "数量"},
+                {"name": "order_id",
+                 "llm_name": "订单号"},
+                {"name": "note",
+                 "llm_name": "备注"}]
 
-        product_id_strs = re.findall(r'\S+', val)
-        product_ids |= set(product_id_strs)
+    def order_line_extention_keys(self) -> list[str]:
+        return ["color", "note"]
 
-        return list(product_ids)
-
-    def get_order_ids(self, val):
-        order_ids = set()
-        if pd.isna(val):
-            return []
-
-        if isinstance(val, (int)):
-            val = str(val)
-        if isinstance(val, (float)):
-            val = str(int(val))
-
-        val = str(val)
-
-        order_id_strs = re.findall(r'\S+', val)
-        order_ids |= set(order_id_strs)
-        return list(order_ids)
-
-    def match_header(self, ctx: dict, header: types.Header, raw_header: dict[str, str]):
-        header["extentions"]["po_number"] = raw_header.get("po_number", "")
-        return header
+    def get_web_config(self) -> dict:
+        return {}
 
     def match_order_line(self, ctx: dict, header: types.Header, recognized_row: types.Row) \
         -> tuple[ str|None, # result
                   dict|None, # diagnose
                   list[types.MatchedOrderLine] ]:
 
-        if recognized_row["order_id"] == "":
-            recognized_row["order_id"] = header["extentions"]["po_number"]
+        if (recognized_row["extentions"]["product_name"] == "" and
+            recognized_row["extentions"]["order_id"] == ""):
+            return None, None, []
 
-        result, diagnose, order_line_list = super().match_order_line(ctx, header, recognized_row)
-        return result, diagnose, order_line_list
+        order_line = {}
+        order_line["order_id"] = recognized_row["order_id"]
+        order_line["product_id"] = recognized_row["extentions"]["product_name"]
+        order_line["desc"] = recognized_row["extentions"]["specification"]
+        order_line["price"] = 0
+        order_line["quantity"] = recognized_row["quantity"]
+        order_line["total"] = 0
+        order_line["email_id"] = recognized_row["email_id"]
+        order_line["filename"] = recognized_row["filename"]
+        order_line["sheet"] = recognized_row["sheet"]
+        order_line["supplier"] = ""
+        order_line["currency"] = ""
+        order_line["match_detail"] = ""
+        order_line["extentions"] = {}
+        order_line["extentions"]["color"] = recognized_row["extentions"]["color"]
+        order_line["extentions"]["note"] = recognized_row["extentions"]["note"]
 
-    def check_order_line(self, ctx: dict, header: types.Header, order_line: types.OrderLine, options: str) \
-        -> tuple[ str,  # result
-                  str   # diagnose
-                ]:
-
-        return "succ", ""
+        return "succ", None, [order_line]
 
     def ai_prompts(self):
         return {
@@ -78,23 +73,4 @@ class Application(base.Application):
             "tools_fun_prompt": "提取工厂计件单中的字段. 若字段不存在，则填空字符串",
             "sys_prompt": "你是一位工厂计件单处理专家。你了解工厂计件单处理的所有要求",
             "msg_prompt": "请从工厂计件单处中抽取信息, 将相关参数填入extract_fields_from_document。填入的参数，严格遵循extract_fields_from_document中的参数格式。其中参数Po Number是订单号"
-        }
-
-    def ai_based_only(self):
-        return True
-
-    def ai_header_fields(self):
-        return [{"name": "po_number",
-                 "llm_name": "Po Number"}]
-
-    def ai_line_fields(self):
-        return [{"name": "product_id",
-                 "llm_name": "Product",
-                 "desc": "商品名称"}]
-
-    def get_web_config(self) -> dict:
-        return {
-            "header_extention_names": {
-                "po_number": "订单号"
-            },
         }
