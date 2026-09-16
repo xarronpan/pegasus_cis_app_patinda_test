@@ -75,9 +75,9 @@ class Application(base.Application):
     def ai_prompts(self):
         return {
             "tools_fun_nam": "extract_fields_from_document",
-            "tools_fun_prompt": "提取新鲜配送送货单中的字段. 若字段不存在，则填空字符串",
-            "sys_prompt": "你是一位新鲜配送送货单处理专家。你了解新鲜配送处理的所有要求",
-            "msg_prompt": "请从新鲜配送送货单处中抽取信息, 将相关参数填入extract_fields_from_document。填入的参数，严格遵循extract_fields_from_document中的参数格式。其中参数Po Number是采购订单号"
+            "tools_fun_prompt": "提取工厂计件单中的字段. 若字段不存在，则填空字符串",
+            "sys_prompt": "你是一位工厂计件单处理专家。你了解工厂计件单处理的所有要求",
+            "msg_prompt": "请从工厂计件单处中抽取信息, 将相关参数填入extract_fields_from_document。填入的参数，严格遵循extract_fields_from_document中的参数格式。其中参数Po Number是订单号"
         }
 
     def ai_based_only(self):
