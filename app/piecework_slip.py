@@ -9,7 +9,7 @@ class Application(libs.app.root.llm.Application):
              self, config.appid, config.locale)
 
     def get_hided_fields(self):
-        return ["price", "quantity",
+        return ["price", "total",
                 "supplier", "currency", "uninvoiced_qty",
                 "invoice_number", "vendor", "invoice_date", "payment_term", "due_date"]
 
@@ -37,7 +37,9 @@ class Application(libs.app.root.llm.Application):
         return ["color", "note"]
 
     def get_web_config(self) -> dict:
-        return {}
+        return {
+            "order_line_extention_names": {"color": "颜色", "note": "备注"}
+        }
 
     def match_order_line(self, ctx: dict, header: types.Header, recognized_row: types.Row) \
         -> tuple[ str|None, # result
